@@ -21,6 +21,7 @@ exports.updateLeaderboard = functions.https.onRequest(async (req, res) => {
   const questions_col = firestore.collection("questions")
   const { data } = req.body;
   const responses = [];
+  const promises = []
 
   for (const res of data.results) {
     const testName = Object.keys(res)[0];
@@ -29,16 +30,15 @@ exports.updateLeaderboard = functions.https.onRequest(async (req, res) => {
     const tests_run = parseInt(stats["Tests run"])
     const failures = parseInt(stats["Failures"])
     const errors = parseInt(stats["Errors"])
-
     const acc = (tests_run - failures - errors) / tests_run;
-    functions.logger.info(acc, {structuredData: true})
 
     const updateObj = {}
     updateObj[data.user] = { acc, timestamp };
-    questions_col.doc(testName).set(updateObj).then(res => {
+    promises.push(questions_col.doc(testName).set(updateObj).then(res => {
       responses.push(res);
-    });
+    }));
   }
+  await Promise.all(promises);
   res.json({ result: responses })
 })
 
