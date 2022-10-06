@@ -16,12 +16,11 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 exports.updateLeaderboard = functions.https.onRequest(async (req, res) => {
-  const timestamp = Date.now();
+
   const firestore = admin.firestore()
-  const questions_col = firestore.collection("questions")
+  const contestants_col = firestore.collection("contestants")
   const { data } = req.body;
-  const responses = [];
-  const promises = []
+  const updateObj = { latest_time: Date.now() }
 
   for (const res of data.results) {
     const testName = Object.keys(res)[0];
@@ -32,22 +31,11 @@ exports.updateLeaderboard = functions.https.onRequest(async (req, res) => {
     const errors = parseInt(stats["Errors"])
     const acc = (tests_run - failures - errors) / tests_run;
 
-    const updateObj = {}
-    updateObj[data.user] = { acc, timestamp };
-    promises.push(questions_col.doc(testName).set(updateObj).then(res => {
-      responses.push(res);
-    }));
+    updateObj[testName] = { acc, tests_run, failures, errors };
   }
-  await Promise.all(promises);
-  res.json({ result: responses })
+
+  await contestants_col.doc(data.user).set(updateObj).then(success => {
+    res.json({ result: success })
+  });
 })
 
-// // Create and Deploy Your First Cloud Functions
-// // https://firebase.google.com/docs/functions/write-firebase-functions
-//
-// exports.helloWorld = functions.https.onRequest((request, response) => {
-//   functions.logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
-//
-//
